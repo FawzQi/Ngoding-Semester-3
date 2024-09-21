@@ -165,7 +165,7 @@ class Player : public Character {
 
         if (jump_state) {
             pos.y += jump_speed;
-            if (jump_speed < 22) jump_speed += 3;
+            if (jump_speed < 28) jump_speed += 3;
 
             if (pos.y >= 900) {
                 jump_state = false;
@@ -441,7 +441,7 @@ class Boss_Dog : public Character {
             } else {
                 direction = true;
             }
-            if (hp < 165 && !low_hp) {
+            if (hp < 310 && !low_hp) {
                 punish_frame += 80;
                 special_attack = true;
                 rush_attack = false;
@@ -481,6 +481,7 @@ int main() {
 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "cool game");
     SetTargetFPS(60);
+    ToggleFullscreen();
 
     Vector2 test_pos = {0, 0};
     player.initTexture();
