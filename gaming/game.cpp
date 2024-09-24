@@ -67,7 +67,7 @@ class Player : public Character {
     bool attack_state = false;
     bool jump_state = false;
     bool direction = true;
-    int jump_speed = 0;
+    float jump_speed = 0;
     bool tech_state = false;
     int tech_frame = 0;
     int frame = 0;
@@ -142,10 +142,11 @@ class Player : public Character {
         if (IsKeyPressed(KEY_W) && !jump_state && !attack_state && stamina > 0) {
             jump_state = true;
             jump_speed = -42;
-            stamina -= 7;
+            stamina -= 8;
         }
 
         if ((IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_ENTER)) && !tech_state && !attack_state && stamina > 0) {
+            jump_speed = 0;
             attack_state = true;
             frame = game_frame;
             att_frame = 3;
@@ -164,8 +165,8 @@ class Player : public Character {
         }
 
         if (jump_state) {
-            pos.y += jump_speed;
-            if (jump_speed < 28) jump_speed += 3;
+            pos.y += jump_speed / (attack_state ? 5 : 1);
+            if (jump_speed < 28 && !attack_state) jump_speed += 3;
 
             if (pos.y >= 900) {
                 jump_state = false;
@@ -216,7 +217,7 @@ class Player : public Character {
         }
 
         if (attack_state) {
-            if (((game_frame - frame) % 8) == 0)
+            if (((game_frame - frame) % 10) == 0)
                 img_frame++;
             if ((img_frame - 3) == att_frame) {
                 attack_state = false;
@@ -229,7 +230,7 @@ class Player : public Character {
                 DrawTexturePro(img[11], {0, 0, (float)img[11].width, (direction ? 1 : -1) * (float)img[11].height}, {(direction ? 0 : -200) + pos.x, pos.y, (float)img[11].width, (float)img[11].height}, {0, 0}, -90, WHITE);
             }
         } else {
-            if (stamina <= 100 && stamina > 0) stamina += 0.3;
+            if (stamina <= 100 && stamina > 0) stamina += 0.25;
             if (stamina < 0) stamina += 0.1;
 
             if (IsKeyDown(KEY_A) || IsKeyDown(KEY_D)) {
