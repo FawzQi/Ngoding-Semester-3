@@ -1,41 +1,31 @@
-class LinkedList:
-    class Node:
-        def __init__(self, data):
-            self.data = data
-            self.next = None
+import numpy as np
 
-    def __init__(self):
-        self.head = None
+def discrete_convolution(x, h):
+    # Panjang sinyal input
+    len_x = len(x)
+    len_h = len(h)
+    
+    # Panjang sinyal output
+    len_y = len_x + len_h - 1
+    
+    # Inisialisasi sinyal output dengan nol
+    y = np.zeros(len_y)
+    
+    # Melakukan operasi konvolusi
+    for n in range(len_y):
+        for k in range(len_x):
+            if n - k >= 0 and n - k < len_h:
+                y[n] += x[k] * h[n - k]
+    
+    return y
 
-    def list_empty(self):
-        return self.head is None
+# Contoh sinyal input
+x = [0,1,2,3,4,5]
+h = [1,0,-1]
 
-    def insert_first(self, value):
-        node = self.Node(value)
-        node.next = self.head
-        self.head = node
+# Melakukan konvolusi diskrit
+y = discrete_convolution(x, h)
 
-    def insert_after(self, pred_value, value):
-        pred = self.head
-        while pred is not None and pred.data != pred_value:
-            pred = pred.next
-        if pred is None:
-            raise ValueError(f"Predecessor value {pred_value} not found in list")
-        node = self.Node(value)
-        node.next = pred.next
-        pred.next = node
-
-def print_list(linked_list):
-    current = linked_list.head
-    elements = []
-    while current:
-        elements.append(str(current.data))
-        current = current.next
-    print(" -> ".join(elements) if elements else "")
-
-# Instantiate the LinkedList
-my_list = LinkedList()
-my_list.insert_first(3)
-my_list.insert_first(5)
-my_list.insert_first(7)
-print_list(my_list)
+print(f"Input signal x: {x}")
+print(f"Impulse response h: {h}")
+print(f"Output signal y: {y}")

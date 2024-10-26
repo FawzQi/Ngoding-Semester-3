@@ -107,7 +107,7 @@ def check_command(command, length):
             else:
                 output += "line-" + str(line) + " BUKAN OKTAL IKI?\n"
                 return True
-    elif command[0] == 'PUTIN':
+    elif command[0] == 'RIZZUP':
         if command[1] in list_var:
             index = list_var.index(command[1])
             index_input += 1
@@ -129,36 +129,52 @@ def check_command(command, length):
         else:
             output += "line-" + str(line) + " GK ONOK " + command[1] + " NAK KENE!\n"
             return True
-    elif command[0] == 'LITERASI':
+    elif command[0] == 'PREENT':
         kalimat = ''
         for item in command[1:]:
             if item in list_var:
                 index = list_var.index(item)
-                kalimat += (str(var_value[index]) + "\n")  # Konversi ke string sebelum mencetak
+                if var_type[index] == "0d":
+                    kalimat += ((str(var_value[index]) )+" ")
+                elif var_type[index] == "0b":
+                    kalimat += ((bin(var_value[index])[2:] )+" ")
+                elif var_type[index] == "0x":
+                    kalimat += ((hex(var_value[index])[2:] )+" ")
+                elif var_type[index] == "0o":
+                    kalimat += ((oct(var_value[index])[2:] )+" ")
+                else:
+                    kalimat += (str(var_value[index]) ) +" " # Konversi ke string sebelum mencetak
             else:
-                kalimat += (str(item) + "\n")
-        output += kalimat
+                kalimat += (str(item))+" "
+        output += kalimat+"\n"
     elif command[0] == 'NIGERUNDAYO':
         output += "Program selesai\n"
         return True
     elif command[0] == 'MORB_0b':
         if command[1] in list_var:
             index = list_var.index(command[1])
-            var_value[index] = bin(var_value[index])[2:]
+            var_type[index] = '0b'
         else:
             output += "line-" + str(line) + " SING KATE MBOK MORB OPO???"
             return True
     elif command[0] == 'MORB_0x':
         if command[1] in list_var:
             index = list_var.index(command[1])
-            var_value[index] = hex(int(var_value[index]))[2:]
+            var_type[index] = '0x'
         else:
             output += "line-" + str(line) + " SING KATE MBOK MORB OPO???"
             return True
     elif command[0] == 'MORB_0o':
         if command[1] in list_var:
             index = list_var.index(command[1])
-            var_value[index] = oct(int(var_value[index]))[2:]
+            var_type[index] = '0o'
+        else:
+            output += "line-" + str(line) + " SING KATE MBOK MORB OPO???"
+            return True
+    elif command[0] == 'MORB_0d':
+        if command[1] in list_var:
+            index = list_var.index(command[1])
+            var_type[index] = '0d'
         else:
             output += "line-" + str(line) + " SING KATE MBOK MORB OPO???"
             return True
@@ -200,15 +216,22 @@ def compile_code():
     code = code_text.get("1.0", tk.END)
 
     # Simpan kode ke file sementara
-    with open(file_name, "w") as file:
-        file.write(code)
-
-    
-
-    # Hasil kompilasi
+    if file_name:
+        with open(file_name, "w") as file:
+            file.write(code)
+    else :
+        output = "File tidak ditemukan\nTolong pilih dan buka file terlebih dahulu\n"
+        output_text.config(state=tk.NORMAL)  # Aktifkan sementara
+        output_text.delete("1.0", tk.END)
+        output_text.insert(tk.END, output)
+        output_text.config(state=tk.DISABLED)  # Nonaktifkan lagi
+        return
+        # Hasil kompilasi
     try:
-        read_file(file_name)
-
+        if not file_name:
+          read_file(code)
+        else:
+          read_file(file_name)
     except Exception as e:
         output = f"Terjadi kesalahan: {e}"
 
