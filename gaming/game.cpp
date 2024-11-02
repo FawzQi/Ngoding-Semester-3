@@ -235,9 +235,9 @@ class Player : public Character {
     int att_frame = 0;
     int img_frame = 0;
     int hit_reset = 0;
+    bool pre_jump = false;
 
-    void
-    initTexture() {
+    void initTexture() {
         img[0] = LoadTexture("Proyek 11_13.png");
         img[1] = LoadTexture("Proyek 11_33.png");
         img[2] = LoadTexture("Proyek 11_25.png");
@@ -307,6 +307,8 @@ class Player : public Character {
             jump_state = true;
             jump_speed = -42;
             stamina -= 8;
+        } else if (IsKeyPressed(KEY_W) && jump_state && !attack_state && !tech_state && pos.y > 700 && stamina > 0) {
+            pre_jump = true;
         }
 
         if ((IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_ENTER)) && !tech_state && !attack_state && stamina > 0 && !attack_jump) {
@@ -343,6 +345,12 @@ class Player : public Character {
                 jump_state = false;
                 pos.y = 900;
                 attack_jump = false;
+
+                if (pre_jump) {
+                    jump_state = true;
+                    jump_speed = -42;
+                    pre_jump = false;
+                }
             }
         }
 
@@ -437,6 +445,23 @@ class Player : public Character {
             return true;
         }
         if (CheckCollisionCircles({(direction ? 315 : 110) + pos.x, pos.y - 105}, 100, hitBox, size_hitbox)) {
+            return true;
+        }
+        return false;
+    }
+
+    bool attack(Rectangle hitBox) {
+        if (img_frame != 8 && img_frame != 5) return false;
+        if (CheckCollisionCircleRec({(direction ? 315 : -130) + pos.x, pos.y - 95}, 60, hitBox)) {
+            return true;
+        }
+        if (CheckCollisionCircleRec({(direction ? 315 : -20) + pos.x, pos.y - 120}, 60, hitBox)) {
+            return true;
+        }
+        if (CheckCollisionCircleRec({(direction ? 315 : -20) + pos.x, pos.y - 85}, 60, hitBox)) {
+            return true;
+        }
+        if (CheckCollisionCircleRec({(direction ? 315 : 110) + pos.x, pos.y - 105}, 100, hitBox)) {
             return true;
         }
         return false;
@@ -964,10 +989,22 @@ class Boss_Alu {
     int punish_frame = 120;
     int att_frame = 130;
     bool attack_state = false;
-    int attack_type = 0;
+    int attack_type = 1;
     int direction = 1;
     bullet blood_dash;
     Texture2D img[32];
+
+    void isgetHit() {
+        if (game_frame - hit_reset > 300 && player.focus > 0) player.focus -= 0.0366;
+        if (player.attack({pos.x + 443 + (direction == -1 ? -22 : 0), 550, 135, 350}) && (hit_reset + 10) <= game_frame) {
+            player.focus += 16;
+            hp -= player.focus == 80 ? 20 * 5 : 20;
+            if (player.focus >= 80) player.focus = 0;
+            hit_reset = game_frame;
+            player.att_impact = 9;
+            attacked = 1.0;
+        }
+    }
 
     bool bb_ready = true;
     void make_bb(Vector2 pos) {
@@ -1042,18 +1079,52 @@ class Boss_Alu {
         }
     }
 
-    void check_isright() {
-        DrawRectangle(player.pos.x + 50, 800, 50, 100, BLACK);
-        DrawRectangle(pos.x + 450, 800, 100, 50, RED);
-        if (pos.x + 450 > player.pos.x + 50) {
-            direction = 1;
+    void blood_warp(bool inout) {
+        if (inout) {
+            if (img_frame != -1) {
+                if (img_frame != 21 && img_frame < 21) {
+                    img_frame = 21;
+                    frame = game_frame;
+                } else {
+                    if (game_frame - frame >= 5) {
+                        img_frame++;
+                        frame = game_frame;
+                    }
+                    if (img_frame > 24) {
+                        img_frame = -1;
+                    }
+                }
+            }
         } else {
-            direction = -1;
+            if (img_frame != 24 && img_frame > 99) {
+                img_frame = 24;
+                frame = game_frame;
+            } else {
+                if (game_frame - frame >= 7) {
+                    img_frame--;
+                    frame = game_frame;
+                }
+                if (img_frame < 21) {
+                    img_frame = 5;
+                }
+            }
+        }
+    }
+
+    void check_isright() {
+        // DrawRectangleRec(player.hitBox(), RED);
+        // DrawRectangle(pos.x + 443 + (direction == -1 ? -22 : 0), 550, 135, 350, RED);
+        if (!(blood_dash.frame < 68 && blood_dash.frame >= 90)) {
+            if (pos.x + 450 > player.pos.x + 50) {
+                direction = 1;
+            } else {
+                direction = -1;
+            }
         }
     }
 
     void idle_animation() {
-        if (attack_type == 1 || attack_type == 0 && img_frame > 2) {
+        if ((attack_type == 1 || attack_type == 0) && img_frame > 2) {
             if (game_frame - frame >= 8) {
                 if (img_frame == 3) {
                     img_frame = 2;
@@ -1064,8 +1135,23 @@ class Boss_Alu {
                     frame = game_frame;
                 }
             }
+        } else if (attack_type == 2 && (img_frame > 2 || img_frame == -1)) {
+            if (game_frame - frame >= 5) {
+                if (img_frame == -1) {
+                    img_frame = 24;
+                    frame = game_frame;
+                } else if (img_frame == 21) {
+                    img_frame = 2;
+                    img_count = -1;
+                    frame = game_frame;
+                } else {
+                    img_frame--;
+                    frame = game_frame;
+                }
+            }
+
         } else {
-            if (game_frame - frame >= 8) {
+            if (game_frame - frame >= 11) {
                 img_frame += img_count;
                 if ((img_frame > 2 || img_frame < 0)) {
                     img_count = img_frame > 2 ? -1 : 1;
@@ -1094,12 +1180,12 @@ class Boss_Alu {
             att_frame--;
             if (!att_frame) {
                 attack_state = false;
-                punish_frame = 70;
+                punish_frame = 130;
             }
         } else {
             punish_frame--;
             if (!punish_frame) {
-                attack_type = 0;
+                attack_type = 2;
                 attack_state = true;
                 att_frame = 260;
             }
@@ -1118,6 +1204,8 @@ class Boss_Alu {
 
                         bullets.speed.x = -35 * bullets.size.x;
                     } else {
+                        check_isright();
+
                         bullets.size.x = direction;
                     }
 
@@ -1127,13 +1215,13 @@ class Boss_Alu {
 
                     if (bullets.speed.y != 99) {
                         DrawTexturePro(img[bb_frame], {0, 0, bullets.size.x * (float)img[bb_frame].width, (float)img[bb_frame].height}, {bullets.pos.x, bullets.pos.y, (float)img[bb_frame].width, (float)img[bb_frame].height}, {0, 0}, 0, WHITE);
-                        // DrawCircleV({bullets.pos.x + 240, bullets.pos.y + 430}, 30, RED);
-                        if (CheckCollisionCircleRec({bullets.pos.x + 240, bullets.pos.y + 430}, 30, player.hitBox())) {
+                        //   DrawCircleV({bullets.pos.x + 240 + (direction == -1 ? 520 : 0), bullets.pos.y + 430}, 30, RED);
+                        if (CheckCollisionCircleRec({bullets.pos.x + 240 + (direction == -1 ? 520 : 0), bullets.pos.y + 430}, 30, player.hitBox()) && bb_frame >= 13) {
                             player.hp -= 20;
                             bullets.speed.y = 99;
                         }
                     }
-                    if (bullets.pos.x < -500 || bullets.pos.x > 2500) {
+                    if (bullets.pos.x < -1500 || bullets.pos.x > 4000) {
                         bullets.active = false;
                         bullets.frame = 0;
 
@@ -1150,17 +1238,19 @@ class Boss_Alu {
                 if (bd_frame > 16) {
                     bd_frame = 16;
                 } else {
+                    check_isright();
                     blood_dash.size.x = direction;
                 }
                 if (blood_dash.frame == 68) {
-                    blood_dash.speed.x = -35 * blood_dash.size.x;
+                    blood_dash.speed.x = -50 * blood_dash.size.x;
                 }
 
                 blood_dash.frame++;
-                if (blood_dash.speed.y != 99) {
-                    DrawTexturePro(img[bd_frame], {0, 0, blood_dash.size.x * (float)img[bd_frame].width, (float)img[bd_frame].height}, {blood_dash.pos.x, blood_dash.pos.y, (float)img[bd_frame].width, (float)img[bd_frame].height}, {0, 0}, 0, WHITE);
+                DrawTexturePro(img[bd_frame], {0, 0, blood_dash.size.x * (float)img[bd_frame].width, (float)img[bd_frame].height}, {blood_dash.pos.x, blood_dash.pos.y, (float)img[bd_frame].width, (float)img[bd_frame].height}, {0, 0}, 0, WHITE);
 
-                    if (CheckCollisionRecs(player.hitBox(), {blood_dash.pos.x, blood_dash.pos.y, 110, 110})) {
+                if (blood_dash.speed.y != 99) {
+                    // DrawRectangle(blood_dash.pos.x + 260 + (blood_dash.size.x == -1 ? 450 : 0), blood_dash.pos.y + 270, 50, 300, RED);
+                    if (CheckCollisionRecs(player.hitBox(), {blood_dash.pos.x + 260 + (blood_dash.size.x == -1 ? 450 : 0), blood_dash.pos.y + 270, 50, 300})) {
                         player.hp -= 20;
                         blood_dash.speed.y = 99;
                     }
@@ -1171,6 +1261,9 @@ class Boss_Alu {
                     blood_dash.frame = 0;
                 } else {
                     blood_dash.pos.x += blood_dash.speed.x;
+                    if ((pos.x + blood_dash.speed.x) > -500 && (pos.x + blood_dash.speed.x) < 1920 && blood_dash.frame < 90) {
+                        pos.x += blood_dash.speed.x;
+                    }
                 }
             }
         } else if (attack_type == 2) {
@@ -1185,13 +1278,15 @@ class Boss_Alu {
                 raise_hand();
                 make_blood_dash({pos.x, pos.y});
             } else if (attack_type == 2) {
+                blood_warp(true);
             } else if (attack_type == 3) {
             }
         } else {
             idle_animation();
+            check_isright();
         }
-        check_isright();
-        DrawTexturePro(img[img_frame], {0, 0, direction * (float)img[img_frame].width, (float)img[img_frame].height}, {pos.x, pos.y, (float)img[img_frame].width, (float)img[img_frame].height}, {0, 0}, 0, WHITE);
+        isgetHit();
+        if (img_frame != -1) DrawTexturePro(img[img_frame], {0, 0, direction * (float)img[img_frame].width, (float)img[img_frame].height}, {pos.x, pos.y, (float)img[img_frame].width, (float)img[img_frame].height}, {0, 0}, 0, WHITE);
     }
 };
 Boss_Alu boss_alu;
@@ -1289,7 +1384,7 @@ int main() {
         // }
         // t += 0.1f;
         // if (t >= 1.0f) t = 0.0f;
-        DrawTexturePro(testimg, {0, 0, (float)testimg.width, (float)testimg.height}, {test_pos.x, test_pos.y, 1000, 850}, {0, 0}, 0, WHITE);
+        // DrawTexturePro(testimg, {0, 0, (float)testimg.width, (float)testimg.height}, {test_pos.x, test_pos.y, 1000, 850}, {0, 0}, 0, WHITE);
 
         // DrawTexturePro(testimg, {0, 0, (float)testimg.width, (float)testimg.height}, {test_pos.x, test_pos.y, size_test.x, size_test.y}, {0, 0}, 0, WHITE);
         EndDrawing();
