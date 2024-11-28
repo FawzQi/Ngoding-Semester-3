@@ -1,3 +1,5 @@
+// #include <mmsystem.h>
+
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -22,7 +24,8 @@ vector<flash> dash_player(20);
 
 struct bullet {
     bool active = false;
-    int frame;
+    int frame = 0;
+    int img_frame = 27;
     Vector2 pos;
     Vector2 pos2;
     Vector2 speed;
@@ -236,8 +239,18 @@ class Player : public Character {
     int img_frame = 0;
     int hit_reset = 0;
     bool pre_jump = false;
+    Sound player_sound[4];
+    bool earn_focus = true;
 
     void initTexture() {
+        player_sound[0] = LoadSound("sword slash_1.mp3");
+        player_sound[1] = LoadSound("heavy slash.wav");
+        player_sound[2] = LoadSound("Jump sound effect_1_1.mp3");
+        player_sound[3] = LoadSound("jump sound effect_2_1_1.mp3");
+
+        SetSoundVolume(player_sound[2], 0.7);
+        SetSoundVolume(player_sound[3], 0.7);
+
         img[0] = LoadTexture("Proyek 11_13.png");
         img[1] = LoadTexture("Proyek 11_33.png");
         img[2] = LoadTexture("Proyek 11_25.png");
@@ -256,6 +269,9 @@ class Player : public Character {
     }
 
     void unloadTexture() {
+        for (int i = 0; i < 4; i++) {
+            UnloadSound(player_sound[i]);
+        }
         for (int i = 0; i < 15; i++) {
             UnloadTexture(img[i]);
         }
@@ -307,6 +323,7 @@ class Player : public Character {
             jump_state = true;
             jump_speed = -42;
             stamina -= 8;
+            PlaySound(player_sound[2]);
         } else if (IsKeyPressed(KEY_W) && jump_state && !attack_state && !tech_state && pos.y > 700 && stamina > 0) {
             pre_jump = true;
         }
@@ -316,12 +333,19 @@ class Player : public Character {
             attack_state = true;
             frame = game_frame;
             att_frame = 3;
-            img_frame = 3;
+            img_frame = 4;
             stamina -= 8;
+            earn_focus = true;
             if (jump_state) {
                 attack_jump = true;
             }
 
+            PlaySound(player_sound[0]);
+            // if (focus >= 80) {
+            //     PlaySound(player_sound[1]);
+            // } else {
+            //     PlaySound(player_sound[0]);
+            // }
         } else if (!attack_jump && (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_ENTER)) && attack_state && att_frame == 3 && !tech_state && stamina > 0) {
             att_frame = 6;
             stamina -= 3;
@@ -340,6 +364,14 @@ class Player : public Character {
         if (jump_state) {
             pos.y += jump_speed / (attack_state ? 5 : 1);
             if (jump_speed < 28 && !attack_state) jump_speed += 3;
+            static bool jump_sound = false;
+            if (jump_speed < 0 && jump_sound) {
+                jump_sound = false;
+            }
+            if (jump_speed > 0 && !jump_sound) {
+                PlaySound(player_sound[3]);
+                jump_sound = true;
+            }
 
             if (pos.y >= 900) {
                 jump_state = false;
@@ -347,6 +379,7 @@ class Player : public Character {
                 attack_jump = false;
 
                 if (pre_jump) {
+                    PlaySound(player_sound[2]);
                     jump_state = true;
                     jump_speed = -42;
                     pre_jump = false;
@@ -396,8 +429,13 @@ class Player : public Character {
         }
 
         if (attack_state) {
-            if (((game_frame - frame) % 7) == 0)
+            if (game_frame - frame >= 8) {
                 img_frame++;
+                frame = game_frame;
+            }
+            if (img_frame == 7) {
+                PlaySound(player_sound[0]);
+            }
             if ((img_frame - 3) == att_frame) {
                 attack_state = false;
             }
@@ -409,7 +447,10 @@ class Player : public Character {
                 DrawTexturePro(img[11], {0, 0, (float)img[11].width, (direction ? 1 : -1) * (float)img[11].height}, {(direction ? 0 : -200) + pos.x, pos.y, (float)img[11].width, (float)img[11].height}, {0, 0}, -90, WHITE);
             }
         } else {
-            if (stamina <= 100 && stamina > 0) stamina += 0.25;
+            if (stamina <= 100 && stamina > 0) {
+                stamina += 0.40;
+                stamina += (BOSS == 2 ? 0.20 : 0);
+            }
             if (stamina <= 0) stamina += 0.15;
 
             if (IsKeyDown(KEY_A) || IsKeyDown(KEY_D)) {
@@ -434,34 +475,59 @@ class Player : public Character {
     }
 
     bool attack(Vector2 hitBox, float size_hitbox) {
+        // DrawCircleV({(direction ? 315 : -130) + pos.x, pos.y - 95}, 60, RED);
+        // DrawCircleV({(direction ? 250 : -65) + pos.x, pos.y - 120}, 60, GREEN);
+        // DrawCircleV({(direction ? 250 : -65) + pos.x, pos.y - 85}, 60, YELLOW);
+        // DrawCircleV({(direction ? 155 : 30) + pos.x, pos.y - 105}, 100, BLACK);
         if (img_frame != 8 && img_frame != 5) return false;
         if (CheckCollisionCircles({(direction ? 315 : -130) + pos.x, pos.y - 95}, 60, hitBox, size_hitbox)) {
             return true;
         }
-        if (CheckCollisionCircles({(direction ? 315 : -20) + pos.x, pos.y - 120}, 60, hitBox, size_hitbox)) {
+        if (CheckCollisionCircles({(direction ? 250 : -65) + pos.x, pos.y - 120}, 60, hitBox, size_hitbox)) {
             return true;
         }
-        if (CheckCollisionCircles({(direction ? 315 : -20) + pos.x, pos.y - 85}, 60, hitBox, size_hitbox)) {
+        if (CheckCollisionCircles({(direction ? 250 : -65) + pos.x, pos.y - 85}, 60, hitBox, size_hitbox)) {
             return true;
         }
-        if (CheckCollisionCircles({(direction ? 315 : 110) + pos.x, pos.y - 105}, 100, hitBox, size_hitbox)) {
+        if (CheckCollisionCircles({(direction ? 155 : 30) + pos.x, pos.y - 105}, 100, hitBox, size_hitbox)) {
             return true;
         }
         return false;
     }
 
     bool attack(Rectangle hitBox) {
+        // DrawCircleV({(direction ? 315 : -130) + pos.x, pos.y - 95}, 60, RED);
+        // DrawCircleV({(direction ? 250 : -65) + pos.x, pos.y - 120}, 60, GREEN);
+        // DrawCircleV({(direction ? 250 : -65) + pos.x, pos.y - 85}, 60, YELLOW);
+        // DrawCircleV({(direction ? 155 : 30) + pos.x, pos.y - 105}, 100, BLACK);
+
         if (img_frame != 8 && img_frame != 5) return false;
         if (CheckCollisionCircleRec({(direction ? 315 : -130) + pos.x, pos.y - 95}, 60, hitBox)) {
+            if (earn_focus) {
+                focus += 16;
+                earn_focus = false;
+            }
             return true;
         }
-        if (CheckCollisionCircleRec({(direction ? 315 : -20) + pos.x, pos.y - 120}, 60, hitBox)) {
+        if (CheckCollisionCircleRec({(direction ? 250 : -65) + pos.x, pos.y - 120}, 60, hitBox)) {
+            if (earn_focus) {
+                focus += 16;
+                earn_focus = false;
+            }
             return true;
         }
-        if (CheckCollisionCircleRec({(direction ? 315 : -20) + pos.x, pos.y - 85}, 60, hitBox)) {
+        if (CheckCollisionCircleRec({(direction ? 250 : -65) + pos.x, pos.y - 85}, 60, hitBox)) {
+            if (earn_focus) {
+                focus += 16;
+                earn_focus = false;
+            }
             return true;
         }
-        if (CheckCollisionCircleRec({(direction ? 315 : 110) + pos.x, pos.y - 105}, 100, hitBox)) {
+        if (CheckCollisionCircleRec({(direction ? 155 : 30) + pos.x, pos.y - 105}, 100, hitBox)) {
+            if (earn_focus) {
+                focus += 16;
+                earn_focus = false;
+            }
             return true;
         }
         return false;
@@ -976,6 +1042,8 @@ Boss_Frieren boss_frieren;
 
 vector<bullet> blood_bullet(5);
 
+vector<bullet> blood_sword(1);
+
 class Boss_Alu {
    public:
     Vector2 pos = {680, 298};
@@ -989,20 +1057,28 @@ class Boss_Alu {
     int punish_frame = 120;
     int att_frame = 130;
     bool attack_state = false;
+    bool blood_sword_ready = false;
+    bool boom_attack_ready = false;
     int attack_type = 1;
     int direction = 1;
+    int bb_shooted = rand() % 3 + 4;
+    bool follow_up = false;
+
     bullet blood_dash;
+    bullet blood_boom;
     Texture2D img[32];
 
     void isgetHit() {
-        if (game_frame - hit_reset > 300 && player.focus > 0) player.focus -= 0.0366;
-        if (player.attack({pos.x + 443 + (direction == -1 ? -22 : 0), 550, 135, 350}) && (hit_reset + 10) <= game_frame) {
-            player.focus += 16;
-            hp -= player.focus == 80 ? 20 * 5 : 20;
-            if (player.focus >= 80) player.focus = 0;
-            hit_reset = game_frame;
-            player.att_impact = 9;
-            attacked = 1.0;
+        if (img_frame != -1) {
+            // DrawRectangle(pos.x + 443 + (direction == -1 ? -22 : 0), 550, 135, 350, RED);
+            if (game_frame - hit_reset > 300 && player.focus > 0) player.focus -= 0.0366;
+            if (player.attack({pos.x + 443 + (direction == -1 ? -22 : 0), 550, 135, 350}) && (hit_reset + 10) <= game_frame) {
+                hp -= player.focus == 80 ? 20 * 5 : 20;
+                if (player.focus >= 80) player.focus = 0;
+                hit_reset = game_frame;
+                player.att_impact = 9;
+                attacked = 1.0;
+            }
         }
     }
 
@@ -1048,8 +1124,8 @@ class Boss_Alu {
         img[22] = LoadTexture("Proyek 16_21.png");
         img[23] = LoadTexture("Proyek 16_22.png");
         img[24] = LoadTexture("Proyek 16_23.png");
-        img[25] = LoadTexture("Proyek 16_24.png");
-        img[26] = LoadTexture("Proyek 16_25.png");
+        img[25] = LoadTexture("Proyek 16_34 (1).png");
+        img[26] = img[25];
         img[27] = LoadTexture("Proyek 16_26.png");
         img[28] = LoadTexture("Proyek 16_27.png");
         img[29] = LoadTexture("Proyek 16_28.png");
@@ -1079,41 +1155,122 @@ class Boss_Alu {
         }
     }
 
-    void blood_warp(bool inout) {
-        if (inout) {
-            if (img_frame != -1) {
-                if (img_frame != 21 && img_frame < 21) {
-                    img_frame = 21;
+    void fading() {
+        if (img_frame != -5) {
+            if (game_frame - frame >= 4) {
+                if (img_frame == -1) {
+                    img_frame = 25;
+                    frame = game_frame;
+                } else if (img_frame == 25 && !boom_attack_ready) {
+                    img_frame = -2;
+                    pos.x = player.pos.x - 430;
+                    frame = game_frame + 4;
+                } else if (img_frame == -2) {
+                    img_frame = 26;
+                    frame = game_frame;
+                } else if (img_frame == 26) {
+                    img_frame = -3;
+                    frame = game_frame;
+                } else if (img_frame == -3) {
+                    img_frame = 0;
+                    frame = game_frame;
+                } else if (img_frame == 0) {
+                    img_frame = -4;
+                    frame = game_frame;
+                } else if (img_frame == -4) {
+                    img_frame = 25;
+                    boom_attack_ready = true;
+                    frame = game_frame;
+                } else if (img_frame == 25 && boom_attack_ready) {
+                    img_frame = -5;
                     frame = game_frame;
                 } else {
-                    if (game_frame - frame >= 5) {
-                        img_frame++;
-                        frame = game_frame;
-                    }
-                    if (img_frame > 24) {
-                        img_frame = -1;
-                    }
+                    img_frame = -1;
+                    frame = game_frame;
+                }
+            }
+        }
+    }
+
+    void boom_attack() {
+        if (boom_attack_ready) {
+            if ((game_frame - blood_boom.frame) >= 6) {
+                if (blood_boom.img_frame == 27) {
+                    blood_boom.img_frame = 28;
+                    blood_boom.frame = game_frame;
+
+                } else if (blood_boom.img_frame == 28) {
+                    blood_boom.frame = game_frame;
+
+                    blood_boom.img_frame = 101;
+                } else if (blood_boom.img_frame == 101) {
+                    blood_boom.frame = game_frame;
+
+                    blood_boom.img_frame = 102;
+                } else if (blood_boom.img_frame == 102) {
+                    blood_boom.frame = game_frame;
+
+                    blood_boom.img_frame = 29;
+                    // blood_boom.frame += 3;
+                } else if (blood_boom.img_frame == 29) {
+                    blood_boom.frame = game_frame;
+                    blood_boom.active = true;
+
+                    blood_boom.img_frame = 30;
+                    blood_boom.frame += -2;
+
+                } else if (blood_boom.img_frame == 30) {
+                    blood_boom.frame = game_frame;
+                    boom_attack_ready = false;
+                    blood_boom.img_frame = -1;
+                    att_frame = 0;
+                } else {
+                    blood_boom.frame = game_frame;
+
+                    blood_boom.img_frame = 27;
+                    blood_boom.frame += 4;
+                }
+            }
+
+            if (blood_boom.img_frame == 30 || blood_boom.img_frame == 102) {
+                DrawRectangle(0, 0, 1920, 1080, BLACK);
+                if (CheckCollisionRecs(player.hitBox(), {0, 0, 1920, 1080}) && blood_boom.active && blood_boom.img_frame != 102) {
+                    player.hp -= 30;
+                    blood_boom.active = false;
+                }
+            }
+            if (blood_boom.img_frame == 29 || blood_boom.img_frame == 101) {
+                DrawRectangle(0, 0, 1920, 1080, WHITE);
+            }
+
+            if (blood_boom.img_frame != -1) DrawTexturePro(img[blood_boom.img_frame], {0, 0, (float)img[blood_boom.img_frame].width, (float)img[blood_boom.img_frame].height}, {pos.x, pos.y, (float)img[blood_boom.img_frame].width, (float)img[blood_boom.img_frame].height}, {0, 0}, 0, WHITE);
+        }
+    }
+
+    void blood_warp() {
+        if (img_frame != -1) {
+            blood_sword_ready = false;
+            if (img_frame != 21 && img_frame < 21) {
+                img_frame = 21;
+                frame = game_frame;
+            } else {
+                if (game_frame - frame >= 5) {
+                    img_frame++;
+                    frame = game_frame;
+                }
+                if (img_frame > 24) {
+                    img_frame = -1;
                 }
             }
         } else {
-            if (img_frame != 24 && img_frame > 99) {
-                img_frame = 24;
-                frame = game_frame;
-            } else {
-                if (game_frame - frame >= 7) {
-                    img_frame--;
-                    frame = game_frame;
-                }
-                if (img_frame < 21) {
-                    img_frame = 5;
-                }
-            }
+            blood_sword_ready = true;
         }
     }
 
     void check_isright() {
         // DrawRectangleRec(player.hitBox(), RED);
         // DrawRectangle(pos.x + 443 + (direction == -1 ? -22 : 0), 550, 135, 350, RED);
+
         if (!(blood_dash.frame < 68 && blood_dash.frame >= 90)) {
             if (pos.x + 450 > player.pos.x + 50) {
                 direction = 1;
@@ -1150,8 +1307,25 @@ class Boss_Alu {
                 }
             }
 
-        } else {
-            if (game_frame - frame >= 11) {
+        }
+        // else if (attack_type == 3 && (img_frame <= -5 || img_frame == 25)) {
+        //     if (game_frame - frame >= 6) {
+        //         if (img_frame == -5) {
+        //             img_frame = 25;
+        //         } else if (img_frame == 25) {
+        //             img_frame = -6;
+        //         } else if (img_frame == -6) {
+        //             boom_attack_ready = false;
+
+        //             img_frame = 1;
+        //         } else {
+        //             img_frame = 1;
+        //         }
+        //         frame = game_frame;
+        //     }
+        // }
+        else {
+            if (game_frame - frame >= 13) {
                 img_frame += img_count;
                 if ((img_frame > 2 || img_frame < 0)) {
                     img_count = img_frame > 2 ? -1 : 1;
@@ -1172,126 +1346,201 @@ class Boss_Alu {
         }
     }
 
+    void make_blood_sword(Vector2 pos) {
+        if (blood_sword_ready) {
+            for (bullet& bullets : blood_sword) {
+                if (!bullets.active) {
+                    bullets.active = true;
+                    bullets.pos = pos;
+                    bullets.speed = {0, 0};
+                    bullets.frame = 102;
+                    bullets.size = {1, 0};
+                    blood_sword_ready = false;
+                    break;
+                }
+            }
+        }
+    }
+    int count = 0;
     void logic() {
         DrawRectangle(460, 1000, 1000, 30, BLACK);
         DrawRectangle(460, 1000, hp, 30, RED);
 
+        DrawText(TextFormat("pos.x: %f", pos.x), 200, 200, 20, RED);
+        DrawText(TextFormat("pos.y: %f", player.pos.x), 200, 220, 20, RED);
+        DrawText(TextFormat("pos.x: %d", att_frame), 200, 240, 20, RED);
+
         if (attack_state) {
             att_frame--;
-            if (!att_frame) {
+            if (!att_frame || att_frame < 0) {
                 attack_state = false;
                 punish_frame = 130;
             }
         } else {
             punish_frame--;
             if (!punish_frame) {
-                attack_type = 2;
+                attack_type = 0;
                 attack_state = true;
                 att_frame = 260;
+                bb_shooted = rand() % 3 + 4;
             }
         }
 
-        if (attack_type == 0) {
-            for (bullet& bullets : blood_bullet) {
-                if (bullets.active) {
-                    int bb_frame;
-                    DrawText(TextFormat("test_pos.x: %d", bullets.frame), 600, 20, 20, RED);
-                    bb_frame = floor(bullets.frame / 3);
-                    bullets.frame++;
+        for (bullet& bullets : blood_bullet) {
+            if (bullets.active) {
+                int bb_frame;
+                DrawText(TextFormat("test_pos.x: %d", bullets.frame), 600, 20, 20, RED);
+                bb_frame = floor(bullets.frame / 3);
+                bullets.frame++;
 
-                    if (bb_frame > 13) {
-                        bb_frame = 13;
+                if (bb_frame > 13) {
+                    bb_frame = 13;
 
-                        bullets.speed.x = -35 * bullets.size.x;
-                    } else {
-                        check_isright();
-
-                        bullets.size.x = direction;
-                    }
-
-                    if (bullets.frame == 60) {
-                        bb_ready = true;
-                    }
-
-                    if (bullets.speed.y != 99) {
-                        DrawTexturePro(img[bb_frame], {0, 0, bullets.size.x * (float)img[bb_frame].width, (float)img[bb_frame].height}, {bullets.pos.x, bullets.pos.y, (float)img[bb_frame].width, (float)img[bb_frame].height}, {0, 0}, 0, WHITE);
-                        //   DrawCircleV({bullets.pos.x + 240 + (direction == -1 ? 520 : 0), bullets.pos.y + 430}, 30, RED);
-                        if (CheckCollisionCircleRec({bullets.pos.x + 240 + (direction == -1 ? 520 : 0), bullets.pos.y + 430}, 30, player.hitBox()) && bb_frame >= 13) {
-                            player.hp -= 20;
-                            bullets.speed.y = 99;
-                        }
-                    }
-                    if (bullets.pos.x < -1500 || bullets.pos.x > 4000) {
-                        bullets.active = false;
-                        bullets.frame = 0;
-
-                    } else {
-                        bullets.pos.x += bullets.speed.x;
-                    }
-                }
-            }
-        } else if (attack_type == 1) {
-            if (blood_dash.active) {
-                int bd_frame;
-                bd_frame = floor(blood_dash.frame / 4);
-                if (bd_frame > 11) bd_frame += 2;
-                if (bd_frame > 16) {
-                    bd_frame = 16;
+                    bullets.speed.x = -35 * bullets.size.x;
                 } else {
                     check_isright();
-                    blood_dash.size.x = direction;
-                }
-                if (blood_dash.frame == 68) {
-                    blood_dash.speed.x = -50 * blood_dash.size.x;
+
+                    bullets.size.x = direction;
                 }
 
-                blood_dash.frame++;
-                DrawTexturePro(img[bd_frame], {0, 0, blood_dash.size.x * (float)img[bd_frame].width, (float)img[bd_frame].height}, {blood_dash.pos.x, blood_dash.pos.y, (float)img[bd_frame].width, (float)img[bd_frame].height}, {0, 0}, 0, WHITE);
+                if (bullets.frame == 60) {
+                    bb_ready = true;
+                    bb_shooted--;
+                }
 
-                if (blood_dash.speed.y != 99) {
-                    // DrawRectangle(blood_dash.pos.x + 260 + (blood_dash.size.x == -1 ? 450 : 0), blood_dash.pos.y + 270, 50, 300, RED);
-                    if (CheckCollisionRecs(player.hitBox(), {blood_dash.pos.x + 260 + (blood_dash.size.x == -1 ? 450 : 0), blood_dash.pos.y + 270, 50, 300})) {
+                if (bullets.speed.y != 99) {
+                    DrawTexturePro(img[bb_frame], {0, 0, bullets.size.x * (float)img[bb_frame].width, (float)img[bb_frame].height}, {bullets.pos.x, bullets.pos.y, (float)img[bb_frame].width, (float)img[bb_frame].height}, {0, 0}, 0, WHITE);
+                    //   DrawCircleV({bullets.pos.x + 240 + (direction == -1 ? 520 : 0), bullets.pos.y + 430}, 30, RED);
+                    if (CheckCollisionCircleRec({bullets.pos.x + 240 + (direction == -1 ? 520 : 0), bullets.pos.y + 430}, 30, player.hitBox()) && bb_frame >= 13) {
                         player.hp -= 20;
-                        blood_dash.speed.y = 99;
+                        bullets.speed.y = 99;
                     }
                 }
+                if (bullets.pos.x < -1500 || bullets.pos.x > 4000) {
+                    bullets.active = false;
+                    bullets.frame = 0;
 
-                if (blood_dash.pos.x < -500 || blood_dash.pos.x > 2500) {
-                    blood_dash.active = false;
-                    blood_dash.frame = 0;
                 } else {
-                    blood_dash.pos.x += blood_dash.speed.x;
-                    if ((pos.x + blood_dash.speed.x) > -500 && (pos.x + blood_dash.speed.x) < 1920 && blood_dash.frame < 90) {
-                        pos.x += blood_dash.speed.x;
-                    }
+                    bullets.pos.x += bullets.speed.x;
                 }
             }
-        } else if (attack_type == 2) {
-        } else if (attack_type == 3) {
+        }
+
+        if (blood_dash.active) {
+            int bd_frame;
+            bd_frame = floor(blood_dash.frame / 4);
+            if (bd_frame > 11) bd_frame += 2;
+            if (bd_frame > 16) {
+                bd_frame = 16;
+            } else {
+                check_isright();
+                blood_dash.size.x = direction;
+            }
+            if (blood_dash.frame == 68) {
+                blood_dash.speed.x = -50 * blood_dash.size.x;
+            }
+
+            blood_dash.frame++;
+            DrawTexturePro(img[bd_frame], {0, 0, blood_dash.size.x * (float)img[bd_frame].width, (float)img[bd_frame].height}, {blood_dash.pos.x, blood_dash.pos.y, (float)img[bd_frame].width, (float)img[bd_frame].height}, {0, 0}, 0, WHITE);
+
+            if (blood_dash.speed.y != 99) {
+                // DrawRectangle(blood_dash.pos.x + 260 + (blood_dash.size.x == -1 ? 450 : 0), blood_dash.pos.y + 270, 50, 300, RED);
+                if (CheckCollisionRecs(player.hitBox(), {blood_dash.pos.x + 260 + (blood_dash.size.x == -1 ? 450 : 0), blood_dash.pos.y + 270, 50, 300})) {
+                    player.hp -= 20;
+                    blood_dash.speed.y = 99;
+                }
+            }
+
+            if (blood_dash.pos.x < -500 || blood_dash.pos.x > 2500) {
+                blood_dash.active = false;
+                follow_up = rand() % 2;
+                if (follow_up) {
+                    bb_shooted = rand() % 3 + 2;
+                } else {
+                    att_frame = 0;
+                }
+
+                blood_dash.frame = 0;
+            } else {
+                blood_dash.pos.x += blood_dash.speed.x;
+                if ((pos.x + blood_dash.speed.x) > -500 && (pos.x + blood_dash.speed.x) < 1400 && blood_dash.frame < 90) {
+                    pos.x += blood_dash.speed.x;
+                }
+            }
+        }
+
+        for (bullet& bullets : blood_sword) {
+            if (bullets.active) {
+                int bs_frame;
+                bs_frame = floor(bullets.frame / 6);
+                bullets.frame++;
+                if (bs_frame > 20) {
+                    bs_frame = 20;
+                    bullets.speed.x = 40;
+                } else {
+                    bullets.pos.x = player.pos.x - 50;
+                }
+
+                bullets.frame++;
+                DrawTexturePro(img[bs_frame], {0, 0, (float)img[bs_frame].width, (float)img[bs_frame].height}, {bullets.pos.x, bullets.pos.y, (float)img[bs_frame].width / 3, (float)img[bs_frame].height / 3}, {0, 0}, 0, WHITE);
+                // DrawRectangle(bullets.pos.x + 70, bullets.pos.y + 50, 200, 200, RED);
+                if (CheckCollisionRecs(player.hitBox(), {bullets.pos.x + 70, bullets.pos.y + 50, 200, 200}) && bullets.speed.y != 99) {
+                    player.hp -= 20;
+                    bullets.speed.y = 99;
+                }
+                if (bullets.pos.y < -500 || bullets.pos.y > 1500) {
+                    blood_sword_ready = true;
+                    bullets.active = false;
+                    bullets.frame = 0;
+                } else {
+                    bullets.pos.y += bullets.speed.x;
+                }
+            }
         }
 
         if (attack_state) {
             if (attack_type == 0) {
                 raise_hand();
-                make_bb({pos.x, pos.y});
+                if (bb_shooted) {
+                    make_bb({pos.x, pos.y});
+                    follow_up = rand() % 2;
+                } else {
+                    if (follow_up) {
+                        make_blood_dash({pos.x, pos.y});
+                        follow_up = false;
+                    } else {
+                        att_frame = 0;
+                    }
+                }
             } else if (attack_type == 1) {
                 raise_hand();
-                make_blood_dash({pos.x, pos.y});
+                if (att_frame > 230) {
+                    make_blood_dash({pos.x, pos.y});
+                } else {
+                    if (follow_up) {
+                        make_bb({pos.x, pos.y});
+                        if (!bb_shooted) follow_up = false;
+                    }
+                }
             } else if (attack_type == 2) {
-                blood_warp(true);
+                blood_warp();
+                make_blood_sword({player.pos.x - 50, pos.y - 100});
             } else if (attack_type == 3) {
+                fading();
             }
         } else {
             idle_animation();
             check_isright();
         }
         isgetHit();
-        if (img_frame != -1) DrawTexturePro(img[img_frame], {0, 0, direction * (float)img[img_frame].width, (float)img[img_frame].height}, {pos.x, pos.y, (float)img[img_frame].width, (float)img[img_frame].height}, {0, 0}, 0, WHITE);
+        if (img_frame > -1) DrawTexturePro(img[img_frame], {0, 0, direction * (float)img[img_frame].width, (float)img[img_frame].height}, {pos.x, pos.y, (float)img[img_frame].width, (float)img[img_frame].height}, {0, 0}, 0, WHITE);
     }
 };
 Boss_Alu boss_alu;
 
 int main() {
+    InitAudioDevice();  // Initialize audio device
+
     for (flash& remnants : dash_player) {
         remnants.active = false;
     }
@@ -1308,6 +1557,9 @@ int main() {
         bullets.active = false;
     }
     for (bullet& bullets : blood_bullet) {
+        bullets.active = false;
+    }
+    for (bullet& bullets : blood_sword) {
         bullets.active = false;
     }
     float t;
@@ -1378,6 +1630,9 @@ int main() {
             if (boss_alu.hp > 0) boss_alu.logic();
         }
         player.logic();
+        if (boss_alu.attack_type == 3) {
+            boss_alu.boom_attack();
+        }
         // DrawTexture(testimg, test_pos.x, test_pos.y, WHITE);
         // if (player.hp <= 0) {
         //     break;
@@ -1391,6 +1646,7 @@ int main() {
         game_frame++;
     }
 
+    CloseAudioDevice();  // Close audio device
     player.unloadTexture();
     boss_dog.unloadTexture();
     boss_frieren.unloadTexture();
